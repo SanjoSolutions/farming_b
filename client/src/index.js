@@ -6,7 +6,7 @@ import reportWebVitals from './reportWebVitals';
 
 ReactDOM.render(
   <React.StrictMode>
-    <App user={null} entity={null} entities={[]}/>
+    <App entity={null} entities={[]}/>
   </React.StrictMode>,
   document.getElementById('root')
 );

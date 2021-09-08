@@ -25,7 +25,8 @@ export class RegisterModal extends React.Component {
     const email = formData.get('email')
     const password = formData.get('password')
     try {
-      await register(email, password)
+      const user = await register(email, password)
+      this.props.onRegister(user)
       const modal = bootstrap.Modal.getInstance(this.modal.current)
       modal.hide()
     } catch (error) {

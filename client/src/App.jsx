@@ -3,22 +3,75 @@ import { Entity } from './Entity.jsx'
 import { LoginModal } from './LoginModal.jsx'
 import { RegisterModal } from './RegisterModal.jsx'
 import {
-  getEntities,
-  getEntity,
-  getUser, getUserId,
   logOut,
-  updateEntity,
 } from './serverCommunication.js'
 
 export class App extends React.Component {
   constructor(props) {
     super(props)
+    this.state = {
+      user: null,
+      entity: null,
+      entities: []
+    }
+    this.onRegister = this.onRegister.bind(this)
+    this.onLogIn = this.onLogIn.bind(this)
     this.logOut = this.logOut.bind(this)
     this.renderEntity = this.renderEntity.bind(this)
+
+    this.connection = new WebSocket('ws://farming.loc:8080')
+
+    this.connection.onopen = () => {
+      this.connection.send(JSON.stringify({message: 'test'}))
+    }
+
+    this.connection.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message.type === 'entityUpdated') {
+        onEntityUpdated(message.entity)
+      }
+    }
+
+    const userIdToEntity = new Map()
+
+    function getEntityByUserId(userId) {
+      return userIdToEntity.get(userId)
+    }
+
+    const onEntityUpdated = ({id, userId, x, y}) => {
+      let entity = getEntityByUserId(userId)
+      if (entity) {
+        entity.x = x
+        entity.y = y
+      } else {
+        entity = {
+          id,
+          userId,
+          x,
+          y
+        }
+        userIdToEntity.set(userId, entity)
+      }
+      this.setState({entities: Array.from(userIdToEntity.values())})
+      if (this.state.user && userId === this.state.user.id) {
+        this.setState({
+          entity: userIdToEntity.get(userId)
+        })
+      }
+    }
   }
 
-  logOut() {
-    logOut()
+  onRegister(user) {
+    this.setState({user})
+  }
+
+  onLogIn(user) {
+    this.setState({user})
+  }
+
+  async logOut() {
+    await logOut()
+    this.setState({user: null})
   }
 
   componentDidMount() {
@@ -63,9 +116,9 @@ export class App extends React.Component {
 
     setInterval(
       () => {
-        const userId = getUserId()
+        const userId = this.state.user?.id
         if (userId) {
-          const entity = this.props.entity || {
+          const entity = this.state.entity || {
             userId,
             x: 0,
             y: 0
@@ -91,7 +144,7 @@ export class App extends React.Component {
               { x: previousX, y: previousY },
             )
           ) {
-            updateEntity({
+            this.updateEntity({
               userId,
               x,
               y
@@ -106,9 +159,19 @@ export class App extends React.Component {
     }
   }
 
+  updateEntity(entity) {
+    const data = JSON.stringify(
+      {
+        type: 'updateEntity',
+        entity
+      }
+    )
+    this.connection.send(data)
+  }
+
   render() {
-    const user = this.props.user
-    const { x, y } = this.props.entity || { x: 0, y: 0 }
+    const user = this.state.user
+    const { x, y } = this.state.entity || { x: 0, y: 0 }
     return (
       <div>
         <div className="container">
@@ -125,15 +188,15 @@ export class App extends React.Component {
 
         {this.renderEntities()}
 
-        <LoginModal/>
-        <RegisterModal/>
+        <LoginModal onLogIn={this.onLogIn} />
+        <RegisterModal onRegister={this.onRegister} />
       </div>
     )
   }
 
   renderUserEmailAddress() {
-    const user = this.props.user
-    const email = user.emails ? user.emails[0].address : ''
+    const user = this.state.user
+    const email = user.email
     return (
       <div className="d-inline-block me-2">
         {email}
@@ -170,7 +233,7 @@ export class App extends React.Component {
   }
 
   renderEntities() {
-    return this.props.entities.map(this.renderEntity)
+    return this.state.entities.map(this.renderEntity)
   }
 
   renderEntity(entity) {
@@ -180,13 +243,3 @@ export class App extends React.Component {
     )
   }
 }
-
-// export const App = withTracker(
-//   ({}) => {
-//     return {
-//       user: getUser(),
-//       entity: getEntity(),
-//       entities: getEntities()
-//     }
-//   },
-// )(AppBase)

@@ -30,7 +30,8 @@ export class LoginModal extends React.Component {
     const email = formData.get('email')
     const password = formData.get('password')
     try {
-      await logIn(email, password)
+      const user = await logIn(email, password)
+      this.props.onLogIn(user)
       const modal = bootstrap.Modal.getInstance(this.modal.current)
       modal.hide()
     } catch (error) {

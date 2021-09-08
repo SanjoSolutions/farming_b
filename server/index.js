@@ -15,6 +15,12 @@ const emailToUser = new Map(
   Array.from(users.values()).map(user => [user.email, user])
 )
 
+const userIdToEntity = new Map()
+
+function getEntityByUserId(userId) {
+  return userIdToEntity.get(userId)
+}
+
 passport.use(new LocalStrategy(
   function (email, password, done) {
     if (emailToUser.has(email)) {
@@ -118,7 +124,7 @@ webServer.post(
   '/login',
   passport.authenticate('local'),
   function (request, response) {
-    response.json({})
+    response.json(request.user)
   }
 )
 
@@ -126,10 +132,29 @@ webServer.listen(8081)
 
 const webSocketServer = new WebSocketServer({ port: 8080 })
 
-webSocketServer.on('connection', function connection(ws) {
-  ws.on('message', function incoming(message) {
-    console.log('received: %s', message)
-  })
+const connections = []
 
-  ws.send('something')
+webSocketServer.on('connection', function connection(connection) {
+  connections.push(connection)
+
+  connection.on('message', function incoming (message) {
+    message = JSON.parse(message)
+    if (message.type === 'updateEntity') {
+      const {userId, x, y} = message.entity
+      const entity = getEntityByUserId(userId) ?? {
+        id: uuidv4(),
+        userId,
+        x,
+        y
+      }
+      entity.x = x
+      entity.y = y
+      connections.forEach(connection => {
+        connection.send(JSON.stringify({
+          type: 'entityUpdated',
+          entity
+        }))
+      })
+    }
+  })
 })
