@@ -2,7 +2,7 @@
 
 This work is devoted to God.
 
-Experiment to create an app with similar capabilities like an Meteor app, with following differences:
+Experiment to create an app with similar capabilities like a Meteor app, with following differences:
 
 * Usage of async/await everywhere (instead of Fibers partially on the server).
   This seems to increase interoperability between JavaScript code.
